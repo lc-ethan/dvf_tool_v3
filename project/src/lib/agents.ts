@@ -11,7 +11,7 @@ export async function getAgents(): Promise<AIAgent[]> {
     throw error;
   }
 
-  return data.map(agent => ({
+  return data.map((agent: any) => ({
     ...agent,
     id: agent.id,
     agentId: agent.agent_id,
@@ -21,7 +21,12 @@ export async function getAgents(): Promise<AIAgent[]> {
     reviewResults: agent.review_results,
     desirabilityScores: agent.desirability_scores,
     viabilityScores: agent.viability_scores,
-    feasibilityScores: agent.feasibility_scores
+    feasibilityScores: agent.feasibility_scores,
+    jobTitle: agent.job_title,
+    ownerEmail: agent.owner_email,
+    buBenefitting: agent.bu_benefitting,
+    activatorName: agent.activator_name,
+    agentClassification: agent.agent_classification
   }));
 }
 
@@ -32,10 +37,15 @@ export async function createAgent(formData: FormData, userId: string, totalScore
       user_id: userId,
       agent_id: formData.agentId,
       name: formData.name,
+      job_title: formData.jobTitle,
       owner: formData.owner,
+      owner_email: formData.ownerEmail,
       description: formData.description,
-      business_unit: formData.businessUnit,
+      bu_benefitting: formData.buBenefitting,
+      activator_name: formData.activatorName,
+      platform: formData.platform,
       agent_type: formData.agentType,
+      agent_classification: formData.agentClassification,
       customer_journey: formData.customerJourney,
       desirability: formData.desirability,
       viability: formData.viability,
@@ -57,6 +67,11 @@ export async function createAgent(formData: FormData, userId: string, totalScore
     ...data,
     id: data.id,
     agentId: data.agent_id,
+    jobTitle: data.job_title,
+    ownerEmail: data.owner_email,
+    buBenefitting: data.bu_benefitting,
+    activatorName: data.activator_name,
+    agentClassification: data.agent_classification,
     totalScore: data.total_score,
     reviewNotes: data.review_notes,
     reviewDate: data.review_date,
@@ -100,10 +115,15 @@ export async function updateAgent(agent: AIAgent): Promise<void> {
     .update({
       agent_id: agent.agentId,
       name: agent.name,
+      job_title: agent.jobTitle,
       owner: agent.owner,
+      owner_email: agent.ownerEmail,
       description: agent.description,
-      business_unit: agent.businessUnit,
+      bu_benefitting: agent.buBenefitting,
+      activator_name: agent.activatorName,
+      platform: agent.platform,
       agent_type: agent.agentType,
+      agent_classification: agent.agentClassification,
       customer_journey: agent.customerJourney,
       desirability: agent.desirability,
       viability: agent.viability,

@@ -4,7 +4,7 @@ import { AgentList } from './components/AgentList';
 import { CommercialReview } from './components/CommercialReview';
 import { ReportView } from './components/ReportView';
 import { calculateDVFScore } from './utils/calculateScore';
-import { AuthProvider, useAuth } from './components/Auth';
+import { useAuth } from './components/Auth';
 import { LoginForm } from './components/LoginForm';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { getAgents, createAgent, updateAgent, updateAgentStatus } from './lib/agents';
@@ -54,7 +54,7 @@ function AppContent() {
 
   const handleAddAgent = async (formData: FormData) => {
     const nameExists = agents.some(
-      agent => agent.name.toLowerCase() === formData.name.toLowerCase() && 
+      (agent: AIAgent) => agent.name.toLowerCase() === formData.name.toLowerCase() && 
       (!resubmitAgent || agent.id !== resubmitAgent.id) &&
       (!editAgent || agent.id !== editAgent.id)
     );
@@ -76,7 +76,7 @@ function AppContent() {
         // Update existing agent
         const updatedAgent = { ...editAgent, ...formData, totalScore };
         await updateAgent(updatedAgent);
-        setAgents(prev => prev.map(agent => 
+        setAgents((prev: AIAgent[]) => prev.map((agent: AIAgent) => 
           agent.id === editAgent.id ? updatedAgent : agent
         ));
         setEditAgent(null);
@@ -92,12 +92,12 @@ function AppContent() {
           reviewResults: undefined
         };
         await updateAgent(updatedAgent);
-        setAgents(prev => prev.map(a => (a.id === resubmitAgent.id ? updatedAgent : a)));
+        setAgents((prev: AIAgent[]) => prev.map((a: AIAgent) => (a.id === resubmitAgent.id ? updatedAgent : a)));
         setResubmitAgent(null);
       } else {
         // Add new agent
         const newAgent = await createAgent(formData, user.id, totalScore);
-        setAgents(prev => [newAgent, ...prev]);
+        setAgents((prev: AIAgent[]) => [newAgent, ...prev]);
       }
     } catch (error) {
       console.error('Error saving agent:', error);
@@ -107,8 +107,8 @@ function AppContent() {
   const handleUpdateStatus = async (id: string, status: AIAgent['status'], notes: string, failedQuestions?: { category: string; questions: string[] }[]) => {
     try {
       await updateAgentStatus(id, status, notes, failedQuestions);
-      setAgents(prev =>
-        prev.map(agent =>
+      setAgents((prev: AIAgent[]) =>
+        prev.map((agent: AIAgent) =>
           agent.id === id
             ? {
                 ...agent,
@@ -146,7 +146,7 @@ function AppContent() {
   };
 
   const handleDeleteAgent = (agent: AIAgent) => {
-    setAgents(prev => prev.filter(a => a.id !== agent.id));
+    setAgents((prev: AIAgent[]) => prev.filter((a: AIAgent) => a.id !== agent.id));
     // Reset edit state if the deleted agent was being edited
     if (editAgent?.id === agent.id) {
       setEditAgent(null);
