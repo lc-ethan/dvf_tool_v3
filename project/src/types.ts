@@ -1,62 +1,5 @@
-import type { 
-  BUBenefitting, 
-  CustomerJourney, 
-  ActivatorName, 
-  Platform, 
-  AgentType, 
-  AgentClassification, 
-  AgentName,
-  DesirabilityScores,
-  ViabilityScores,
-  FeasibilityScores,
-  FormData,
-  ReviewResult,
-  AIAgent,
-  HRPerson,
-  AssessmentQuestion
-} from './types';
-
-export type {
-  BUBenefitting,
-  CustomerJourney,
-  ActivatorName,
-  Platform,
-  AgentType,
-  AgentClassification,
-  AgentName,
-  DesirabilityScores,
-  ViabilityScores,
-  FeasibilityScores,
-  FormData,
-  ReviewResult,
-  AIAgent,
-  HRPerson,
-  AssessmentQuestion
-};
-
-// Business Unit mappings
-export type BUBenefitting = 'Enterprise' | 'Consumer & Business' | 'All';
-export type BUAcronym = 'Ent' | 'CB' | 'All';
-
-// Customer Journey mappings
-export type CustomerJourney = 'Discover' | 'Buy' | 'Onboard' | 'Use' | 'Help' | 'Change' | 'Maintain, Leave and Collaborate';
-export type JourneyAcronym = 'D' | 'B' | 'O' | 'U' | 'H' | 'C' | 'M';
-
-// Activator mappings
-export type ActivatorName = 'T1' | 'Consumer & Business' | 'E&C' | 'Networks & IT' | 'Shared Services' | 'Enterprise';
-
-// Platform options
-export type Platform = 'AWS' | 'Agentforce' | 'SAP';
-
-// Agent Type and Classification mappings
-export type AgentType = 'A2C' | 'A2A' | 'A2E';
-export type AgentClassification = 'R' | 'T' | 'C';
-
-export type AgentTypeLabel = 'Agent to Consumer' | 'Agent to Agent' | 'Agent to Employee';
-export type AgentClassLabel = 'Role' | 'Task' | 'Capability';
-
-// Agent ID format: {AgentType}-{AgentClass}-{JobTitle}-{Journey}-{BU}
-export type AgentID = string;
+// Agent ID format: A1_AgentID1, A2_AgentID2, etc.
+export type AgentID = `A${number}_AgentID${number}`;
 
 export type AgentName = 
   | 'Wiremu' | 'Rāwiri' | 'Mikaere' | 'Nikau' | 'Koa' | 'Manaia' | 'Manaaki'
@@ -66,10 +9,9 @@ export type AgentName =
   | 'Natasha' | 'Amanda' | 'Joanne' | 'Kylie' | 'Tania' | 'Karen'
   | 'Andrea' | 'Katrina' | 'Vanessa' | 'Kim' | 'Megan';
 
-export interface HRPerson {
-  name: string;
-  email: string;
-}
+export type BusinessUnit = 'Enterprise' | 'T1' | 'Shared Services' | 'Networks & IT';
+export type AgentType = 'Billing' | 'Inventory Checker' | 'Sales Coach';
+export type CustomerJourney = 'Discover' | 'Buy' | 'Onboard' | 'Use' | 'Help' | 'Change' | 'Maintain';
 
 export interface DesirabilityScores {
   enhancerScore: number;
@@ -101,15 +43,10 @@ export interface FeasibilityScores {
 export interface FormData {
   agentId: AgentID;
   name: AgentName;
-  jobTitle: string;
   owner: string;
-  ownerEmail: string;
   description: string;
-  buBenefitting: BUBenefitting;
-  activatorName: ActivatorName;
-  platform: Platform;
+  businessUnit: BusinessUnit;
   agentType: AgentType;
-  agentClassification: AgentClassification;
   customerJourney: CustomerJourney;
   desirability: number;
   viability: number;
@@ -141,8 +78,21 @@ export interface ReviewResult {
   }[];
 }
 
-export interface AIAgent extends FormData {
+export interface AIAgent {
   id: string;
+  agentId: AgentID;
+  name: AgentName;
+  owner: string;
+  description: string;
+  businessUnit: BusinessUnit;
+  agentType: AgentType;
+  customerJourney: CustomerJourney;
+  desirability: number;
+  viability: number;
+  feasibility: number;
+  desirabilityScores: DesirabilityScores;
+  viabilityScores: ViabilityScores;
+  feasibilityScores: FeasibilityScores;
   totalScore?: number;
   status: 'Pending' | 'Approved' | 'Rejected';
   reviewNotes?: string;

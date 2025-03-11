@@ -13,19 +13,6 @@ interface DVFScoringProps {
   currentStep: 'details' | 'desirability' | 'viability' | 'feasibility';
 }
 
-const TOP_10_BUSINESS_RISKS = [
-  { risk: 'Cyber security breach', description: 'Unauthorized access to systems and data' },
-  { risk: 'Privacy breach', description: 'Unauthorized disclosure of personal/sensitive information' },
-  { risk: 'Sustained economic downturn', description: 'Long-term negative economic conditions' },
-  { risk: 'Health and Safety', description: 'Workplace health and safety incidents' },
-  { risk: 'Business Interruption (IT)', description: 'Critical IT system failures or outages' },
-  { risk: 'Retain competition dynamics', description: 'Market share and competitive position threats' },
-  { risk: 'Business Interruption (Network)', description: 'Network infrastructure failures' },
-  { risk: 'Business Transformation - Simplification', description: 'Change management and transformation challenges' },
-  { risk: 'Consumer Law Compliance', description: 'Regulatory compliance violations' },
-  { risk: 'Fraud Risk', description: 'Financial fraud and fraudulent activities' }
-];
-
 export function DVFScoring({
   desirabilityScores,
   viabilityScores,
@@ -33,8 +20,6 @@ export function DVFScoring({
   onScoreChange,
   currentStep,
 }: DVFScoringProps) {
-  const [showRiskGlossary, setShowRiskGlossary] = React.useState(false);
-
   const ScoreOption = ({ 
     value, 
     label, 
@@ -63,46 +48,18 @@ export function DVFScoring({
     options,
     selectedValue,
     onChange,
-    showGlossaryButton,
   }: {
     title: string;
     description: string;
     options: { value: number; label: string }[];
     selectedValue: number;
     onChange: (value: number) => void;
-    showGlossaryButton?: boolean;
   }) => (
     <div className="border-b pb-6 mb-6 last:border-b-0">
       <div className="mb-2">
-        <div className="flex items-start justify-between">
-          <h4 className="font-medium text-gray-900">{title}</h4>
-          {showGlossaryButton && (
-            <button
-              type="button"
-              onClick={() => setShowRiskGlossary(!showRiskGlossary)}
-              className="text-sm text-blue-600 hover:text-blue-700 underline"
-            >
-              View Top 10 Business Risks
-            </button>
-          )}
-        </div>
+        <h4 className="font-medium text-gray-900">{title}</h4>
       </div>
       <p className="text-sm text-gray-600 mb-4">{description}</p>
-      
-      {showGlossaryButton && showRiskGlossary && (
-        <div className="mb-6 bg-blue-50 p-4 rounded-lg">
-          <h5 className="font-medium text-blue-900 mb-3">Top 10 Business Risks</h5>
-          <div className="space-y-2">
-            {TOP_10_BUSINESS_RISKS.map((item, index) => (
-              <div key={index} className="text-sm">
-                <span className="font-medium text-blue-800">{index + 1}. {item.risk}</span>
-                <p className="text-blue-700 ml-4">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         {options.map((option) => (
           <ScoreOption
@@ -166,7 +123,6 @@ export function DVFScoring({
           ]}
           selectedValue={desirabilityScores.riskMitigationScore}
           onChange={(value) => onScoreChange('desirability', 'riskMitigationScore', value)}
-          showGlossaryButton={true}
         />
 
         <ScoreSection
