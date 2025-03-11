@@ -8,7 +8,7 @@ interface ReportViewProps {
 }
 
 export function ReportView({ agents }: ReportViewProps) {
-  const [selectedStatus, setSelectedStatus] = React.useState<'All' | AIAgent['status']>('Approved');
+  const [selectedStatus, setSelectedStatus] = React.useState<'All' | AIAgent['status']>('All');
   const [selectedAgent, setSelectedAgent] = React.useState<AIAgent | null>(null);
   const [expandedUnits, setExpandedUnits] = React.useState<Set<BusinessUnit>>(new Set());
   
@@ -23,6 +23,7 @@ export function ReportView({ agents }: ReportViewProps) {
     }
   };
 
+  // Filter agents based on selected status
   const filteredAgents = agents.filter(agent => 
     selectedStatus === 'All' || agent.status === selectedStatus
   );
@@ -36,7 +37,8 @@ export function ReportView({ agents }: ReportViewProps) {
 
   // Group agents by business unit and sort by total score (highest to lowest)
   const agentsByUnit = businessUnits.reduce<Record<BusinessUnit, AIAgent[]>>((acc, unit) => {
-    acc[unit] = filteredAgents.filter(agent => agent.businessUnit === unit)
+    acc[unit] = filteredAgents
+      .filter(agent => agent.businessUnit === unit)
       .sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
     return acc;
   }, {} as Record<BusinessUnit, AIAgent[]>);

@@ -332,6 +332,13 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
     setRejectionReason('');
   };
 
+  const hasRejectedQuestions = (agentId: string): boolean => {
+    const approvals = questionApprovals[agentId];
+    if (!approvals) return false;
+
+    return Object.values(approvals).some(approval => approval.rejected);
+  };
+
   const isAllQuestionsReviewed = (agentId: string): boolean => {
     const approvals = questionApprovals[agentId];
     if (!approvals) return false;
@@ -378,6 +385,12 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
   };
 
   const handleStatusUpdate = (agent: AIAgent, status: AIAgent['status']) => {
+    // If any question is rejected, only allow rejection
+    if (hasRejectedQuestions(agent.id) && status === 'Approved') {
+      alert('Cannot approve when there are rejected criteria. Please review all rejected items.');
+      return;
+    }
+
     const failedQuestions = status === 'Rejected' ? getFailedQuestions(agent.id) : undefined;
     onUpdateStatus(agent.id, status, reviewNotes[agent.id] || '', failedQuestions);
     
@@ -573,11 +586,11 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
                 <div className="flex space-x-4">
                   <button
                     onClick={() => handleStatusUpdate(agent, 'Approved')}
-                    disabled={!isAllQuestionsReviewed(agent.id)}
+                    disabled={!isAllQuestionsReviewed(agent.id) || hasRejectedQuestions(agent.id)}
                     className={`flex-1 px-4 py-2 rounded-md ${
-                      isAllQuestionsReviewed(agent.id)
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      !isAllQuestionsReviewed(agent.id) || hasRejectedQuestions(agent.id)
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-600 text-white hover:bg-green-700'
                     }`}
                   >
                     Approve
