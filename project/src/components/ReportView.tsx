@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart2, Building2, Star, Zap, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
-import type { AIAgent, ActivatorName } from '../types';
+import type { AIAgent, BusinessUnit } from '../types';
 import { AgentDetailsModal } from './AgentDetailsModal';
 
 interface ReportViewProps {
@@ -10,9 +10,9 @@ interface ReportViewProps {
 export function ReportView({ agents }: ReportViewProps) {
   const [selectedStatus, setSelectedStatus] = React.useState<'All' | AIAgent['status']>('Approved');
   const [selectedAgent, setSelectedAgent] = React.useState<AIAgent | null>(null);
-  const [expandedActivators, setExpandedActivators] = React.useState<Set<ActivatorName>>(new Set());
+  const [expandedUnits, setExpandedUnits] = React.useState<Set<BusinessUnit>>(new Set());
   
-  const activatorNames: ActivatorName[] = ['T1', 'Consumer & Business', 'E&C', 'Networks & IT', 'Shared Services', 'Enterprise'];
+  const businessUnits: BusinessUnit[] = ['Enterprise', 'T1', 'Shared Services', 'Networks & IT'];
   const statusOptions: ('All' | AIAgent['status'])[] = ['All', 'Pending', 'Approved', 'Rejected'];
 
   const getStatusLabel = (status: AIAgent['status']) => {
@@ -34,26 +34,26 @@ export function ReportView({ agents }: ReportViewProps) {
     return score.toFixed(1);
   };
 
-  // Group agents by activator and sort by total score (highest to lowest)
-  const agentsByActivator = activatorNames.reduce<Record<ActivatorName, AIAgent[]>>((acc, activator) => {
-    acc[activator] = filteredAgents.filter(agent => agent.activatorName === activator)
+  // Group agents by business unit and sort by total score (highest to lowest)
+  const agentsByUnit = businessUnits.reduce<Record<BusinessUnit, AIAgent[]>>((acc, unit) => {
+    acc[unit] = filteredAgents.filter(agent => agent.businessUnit === unit)
       .sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
     return acc;
-  }, {} as Record<ActivatorName, AIAgent[]>);
+  }, {} as Record<BusinessUnit, AIAgent[]>);
 
-  const toggleActivator = (activator: ActivatorName) => {
-    setExpandedActivators(prev => {
+  const toggleUnit = (unit: BusinessUnit) => {
+    setExpandedUnits(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(activator)) {
-        newSet.delete(activator);
+      if (newSet.has(unit)) {
+        newSet.delete(unit);
       } else {
-        newSet.add(activator);
+        newSet.add(unit);
       }
       return newSet;
     });
   };
 
-  const getActivatorMetrics = (agents: AIAgent[]) => {
+  const getUnitMetrics = (agents: AIAgent[]) => {
     if (agents.length === 0) return { total: 0, desirability: 0, viability: 0, feasibility: 0 };
     
     return {
@@ -64,17 +64,17 @@ export function ReportView({ agents }: ReportViewProps) {
     };
   };
 
-  const renderActivator = (activator: ActivatorName) => {
-    const activatorAgents = agentsByActivator[activator];
-    const isExpanded = expandedActivators.has(activator);
-    const metrics = getActivatorMetrics(activatorAgents);
+  const renderBusinessUnit = (unit: BusinessUnit) => {
+    const unitAgents = agentsByUnit[unit];
+    const isExpanded = expandedUnits.has(unit);
+    const metrics = getUnitMetrics(unitAgents);
 
-    if (activatorAgents.length === 0) return null;
+    if (unitAgents.length === 0) return null;
 
     return (
-      <div key={activator} className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div key={unit} className="bg-white rounded-lg shadow-md overflow-hidden">
         <button
-          onClick={() => toggleActivator(activator)}
+          onClick={() => toggleUnit(unit)}
           className="w-full p-6 text-left bg-white hover:bg-gray-50 transition-colors"
         >
           <div className="flex justify-between items-start">
@@ -82,14 +82,14 @@ export function ReportView({ agents }: ReportViewProps) {
               <Building2 className="w-6 h-6 text-blue-600" />
               <div>
                 <h3 className="text-xl font-semibold flex items-center gap-2">
-                  {activator}
+                  {unit}
                   {isExpanded ? (
                     <ChevronUp className="w-5 h-5 text-gray-400" />
                   ) : (
                     <ChevronDown className="w-5 h-5 text-gray-400" />
                   )}
                 </h3>
-                <p className="text-sm text-gray-600">{activatorAgents.length} agents</p>
+                <p className="text-sm text-gray-600">{unitAgents.length} agents</p>
               </div>
             </div>
             <div className="text-right">
@@ -128,7 +128,7 @@ export function ReportView({ agents }: ReportViewProps) {
         {isExpanded && (
           <div className="border-t">
             <div className="divide-y">
-              {activatorAgents.map((agent) => (
+              {unitAgents.map((agent) => (
                 <div
                   key={agent.id}
                   className="p-4 hover:bg-gray-50 transition-colors"
@@ -144,7 +144,7 @@ export function ReportView({ agents }: ReportViewProps) {
                       <p className="text-sm text-gray-600 mt-1">{agent.description}</p>
                       <div className="flex gap-2 items-center mt-2">
                         <span className="px-2 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
-                          {agent.businessUnit}
+                          {agent.agentType}
                         </span>
                         <span className="px-2 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
                           {agent.customerJourney}
@@ -206,7 +206,7 @@ export function ReportView({ agents }: ReportViewProps) {
         </div>
       ) : (
         <div className="space-y-6">
-          {activatorNames.map(activator => renderActivator(activator))}
+          {businessUnits.map(unit => renderBusinessUnit(unit))}
         </div>
       )}
 

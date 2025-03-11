@@ -27,21 +27,9 @@ export const calculateViabilityScore = (scores: ViabilityScores): number => {
 };
 
 export const calculateFeasibilityScore = (scores: FeasibilityScores): number => {
-  // Count how many "Yes" answers (value of 1) we have
-  const yesCount = Object.values(scores).filter(score => score === 1).length;
-
-  // Map number of "Yes" answers to corresponding score
-  const scoreMap: Record<number, number> = {
-    0: 15, // No "Yes" answers - highest score
-    1: 14, // One "Yes" answer
-    2: 12, // Two "Yes" answers
-    3: 9,  // Three "Yes" answers
-    4: 6,  // Four "Yes" answers
-    5: 3,  // Five "Yes" answers
-    6: 1   // All "Yes" answers - lowest score
-  };
-
-  return scoreMap[yesCount] || 1; // Default to lowest score if something goes wrong
+  // All criteria weighted equally for feasibility
+  const total = Object.values(scores).reduce((a, b) => a + b, 0);
+  return Number((total / 6).toFixed(2));
 };
 
 export const calculateDVFScore = (

@@ -1,18 +1,15 @@
 import React from 'react';
-import { BarChart2, AlertCircle, RefreshCw, Edit, Trash2 } from 'lucide-react';
+import { BarChart2, AlertCircle, RefreshCw } from 'lucide-react';
 import type { AIAgent } from '../types';
 import { AgentDetailsModal } from './AgentDetailsModal';
 
 interface AgentListProps {
   agents: AIAgent[];
   onResubmit: (agent: AIAgent) => void;
-  onEditDetails?: (agent: AIAgent) => void;
-  onDelete?: (agent: AIAgent) => void;
 }
 
-export function AgentList({ agents, onResubmit, onEditDetails, onDelete }: AgentListProps) {
+export function AgentList({ agents, onResubmit }: AgentListProps) {
   const [selectedAgent, setSelectedAgent] = React.useState<AIAgent | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState<string | null>(null);
 
   const sortedAgents = [...agents].sort((a, b) => {
     const scoreA = typeof a.totalScore === 'number' ? a.totalScore : 0;
@@ -32,15 +29,6 @@ export function AgentList({ agents, onResubmit, onEditDetails, onDelete }: Agent
       case 'Pending': return 'Idea';
       case 'Rejected': return 'Idea Backlog';
       case 'Approved': return 'Idea Approved';
-    }
-  };
-
-  const handleDelete = (agent: AIAgent) => {
-    if (showDeleteConfirm === agent.id) {
-      onDelete?.(agent);
-      setShowDeleteConfirm(null);
-    } else {
-      setShowDeleteConfirm(agent.id);
     }
   };
 
@@ -92,16 +80,15 @@ export function AgentList({ agents, onResubmit, onEditDetails, onDelete }: Agent
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              {agent.activatorName && (
-                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
-                  {agent.activatorName}
-                </span>
-              )}
-              {agent.customerJourney && (
-                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
-                  {agent.customerJourney}
-                </span>
-              )}
+              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
+                {agent.businessUnit}
+              </span>
+              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
+                {agent.agentType}
+              </span>
+              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
+                {agent.customerJourney}
+              </span>
               <span className={`px-2 py-1 text-sm rounded-full ${
                 agent.status === 'Approved' 
                   ? 'bg-green-100 text-green-800'
@@ -112,42 +99,6 @@ export function AgentList({ agents, onResubmit, onEditDetails, onDelete }: Agent
                 {getStatusLabel(agent.status)}
               </span>
             </div>
-
-            {agent.status !== 'Approved' && (
-              <div className="mt-4 flex gap-2">
-                {onEditDetails && (
-                  <button
-                    onClick={() => onEditDetails(agent)}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors flex-1"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Edit Details
-                  </button>
-                )}
-                {agent.status === 'Rejected' && agent.reviewResults?.failedQuestions && (
-                  <button
-                    onClick={() => onResubmit(agent)}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex-1"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Resubmit Agent
-                  </button>
-                )}
-                {agent.status === 'Pending' && onDelete && (
-                  <button
-                    onClick={() => handleDelete(agent)}
-                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md transition-colors flex-1 ${
-                      showDeleteConfirm === agent.id
-                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                        : 'bg-red-100 hover:bg-red-200 text-red-700'
-                    }`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {showDeleteConfirm === agent.id ? 'Confirm Delete' : 'Delete'}
-                  </button>
-                )}
-              </div>
-            )}
 
             {agent.status === 'Rejected' && agent.reviewResults?.failedQuestions && (
               <div className="mt-4">
@@ -168,6 +119,13 @@ export function AgentList({ agents, onResubmit, onEditDetails, onDelete }: Agent
                     </div>
                   ))}
                 </div>
+                <button
+                  onClick={() => onResubmit(agent)}
+                  className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Resubmit Agent
+                </button>
               </div>
             )}
           </div>

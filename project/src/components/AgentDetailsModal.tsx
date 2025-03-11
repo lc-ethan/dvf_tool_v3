@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Star, Zap, Lightbulb } from 'lucide-react';
+import { X, Star, Zap, Lightbulb, AlertCircle } from 'lucide-react';
 import type { AIAgent } from '../types';
 
 interface AgentDetailsModalProps {
@@ -166,7 +166,7 @@ export function AgentDetailsModal({ agent, onClose }: AgentDetailsModalProps) {
               {agent.businessUnit}
             </span>
             <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-              {agent.activatorName}
+              {agent.agentType}
             </span>
             <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
               {agent.customerJourney}
