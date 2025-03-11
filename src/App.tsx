@@ -7,6 +7,7 @@ import { calculateDVFScore } from './utils/calculateScore';
 import { AuthProvider, useAuth } from './components/Auth';
 import { LoginForm } from './components/LoginForm';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { createAgent, updateAgent, deleteAgent, fetchAgents } from './utils/supabase';
 import type { AIAgent, FormData } from './types';
 
 function AppContent() {
@@ -17,9 +18,29 @@ function AppContent() {
   const [editAgent, setEditAgent] = React.useState<AIAgent | null>(null);
   const [nameError, setNameError] = React.useState<string | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
   const formRef = React.useRef<HTMLDivElement>(null);
 
-  if (loading) {
+  // Fetch agents on component mount
+  React.useEffect(() => {
+    if (user) {
+      loadAgents();
+    }
+  }, [user]);
+
+  const loadAgents = async () => {
+    try {
+      setIsLoading(true);
+      const data = await fetchAgents();
+      setAgents(data);
+    } catch (error) {
+      console.error('Error loading agents:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-xl text-gray-600">Loading...</div>
@@ -35,7 +56,7 @@ function AppContent() {
     formRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleAddAgent = (formData: FormData) => {
+  const handleAddAgent = async (formData: FormData) => {
     // Check if name already exists (case insensitive)
     const nameExists = agents.some(
       agent => agent.name.toLowerCase() === formData.name.toLowerCase() && 
@@ -55,59 +76,72 @@ function AppContent() {
       formData.feasibilityScores
     );
 
-    if (editAgent) {
-      // Update existing agent
-      setAgents(prev => prev.map(agent => 
-        agent.id === editAgent.id 
-          ? { ...agent, ...formData, totalScore }
-          : agent
-      ));
-      setEditAgent(null);
-    } else if (resubmitAgent) {
-      // Handle resubmission
-      const newAgent: AIAgent = {
-        ...formData,
-        id: resubmitAgent.id,
-        totalScore,
-        status: 'Pending',
-        reviewNotes: undefined,
-        reviewDate: undefined,
-        reviewResults: undefined
-      };
-      setAgents(prev => prev.map(a => (a.id === resubmitAgent.id ? newAgent : a)));
-      setResubmitAgent(null);
-    } else {
-      // Add new agent
-      const newAgent: AIAgent = {
-        ...formData,
-        id: crypto.randomUUID(),
-        totalScore,
-        status: 'Pending',
-      };
-      setAgents(prev => [...prev, newAgent]);
+    try {
+      if (editAgent) {
+        // Update existing agent
+        const updatedAgent = await updateAgent({
+          ...editAgent,
+          ...formData,
+          totalScore
+        });
+        setAgents(prev => prev.map(agent => 
+          agent.id === editAgent.id ? updatedAgent : agent
+        ));
+        setEditAgent(null);
+      } else if (resubmitAgent) {
+        // Handle resubmission
+        const newAgent: AIAgent = {
+          ...resubmitAgent,
+          ...formData,
+          totalScore,
+          status: 'Pending',
+          reviewNotes: undefined,
+          reviewDate: undefined,
+          reviewResults: undefined
+        };
+        const updatedAgent = await updateAgent(newAgent);
+        setAgents(prev => prev.map(a => (a.id === resubmitAgent.id ? updatedAgent : a)));
+        setResubmitAgent(null);
+      } else {
+        // Add new agent
+        const newAgent = await createAgent({
+          ...formData,
+          totalScore,
+          status: 'Pending'
+        });
+        setAgents(prev => [...prev, newAgent]);
+      }
+    } catch (error) {
+      console.error('Error saving agent:', error);
+      // Handle error appropriately
     }
   };
 
-  const handleUpdateStatus = (id: string, status: AIAgent['status'], notes: string, failedQuestions?: { category: string; questions: string[] }[]) => {
-    setAgents((prev) =>
-      prev.map((agent) =>
-        agent.id === id
-          ? {
-              ...agent,
-              status,
-              reviewNotes: notes,
-              reviewDate: new Date().toISOString(),
-              reviewResults: status === 'Rejected' ? {
-                agentId: id,
-                status,
-                date: new Date().toISOString(),
-                notes,
-                failedQuestions
-              } : undefined
-            }
-          : agent
-      )
-    );
+  const handleUpdateStatus = async (id: string, status: AIAgent['status'], notes: string, failedQuestions?: { category: string; questions: string[] }[]) => {
+    try {
+      const agent = agents.find(a => a.id === id);
+      if (!agent) return;
+
+      const updatedAgent = await updateAgent({
+        ...agent,
+        status,
+        reviewNotes: notes,
+        reviewDate: new Date().toISOString(),
+        reviewResults: status === 'Rejected' ? {
+          agentId: id,
+          status,
+          date: new Date().toISOString(),
+          notes,
+          failedQuestions
+        } : undefined
+      });
+
+      setAgents(prev =>
+        prev.map(agent => agent.id === id ? updatedAgent : agent)
+      );
+    } catch (error) {
+      console.error('Error updating agent status:', error);
+    }
   };
 
   const handleResubmit = (agent: AIAgent) => {
@@ -124,14 +158,19 @@ function AppContent() {
     scrollToTop();
   };
 
-  const handleDeleteAgent = (agent: AIAgent) => {
-    setAgents(prev => prev.filter(a => a.id !== agent.id));
-    // Reset edit state if the deleted agent was being edited
-    if (editAgent?.id === agent.id) {
-      setEditAgent(null);
-    }
-    if (resubmitAgent?.id === agent.id) {
-      setResubmitAgent(null);
+  const handleDeleteAgent = async (agent: AIAgent) => {
+    try {
+      await deleteAgent(agent.id);
+      setAgents(prev => prev.filter(a => a.id !== agent.id));
+      // Reset edit state if the deleted agent was being edited
+      if (editAgent?.id === agent.id) {
+        setEditAgent(null);
+      }
+      if (resubmitAgent?.id === agent.id) {
+        setResubmitAgent(null);
+      }
+    } catch (error) {
+      console.error('Error deleting agent:', error);
     }
   };
 

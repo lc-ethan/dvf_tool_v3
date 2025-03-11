@@ -2,6 +2,7 @@ import React from 'react';
 import { BarChart2, AlertCircle, RefreshCw, Edit, Trash2 } from 'lucide-react';
 import type { AIAgent } from '../types';
 import { AgentDetailsModal } from './AgentDetailsModal';
+import { useAuth } from './Auth';
 
 interface AgentListProps {
   agents: AIAgent[];
@@ -11,10 +12,21 @@ interface AgentListProps {
 }
 
 export function AgentList({ agents, onResubmit, onEditDetails, onDelete }: AgentListProps) {
+  const { user } = useAuth();
   const [selectedAgent, setSelectedAgent] = React.useState<AIAgent | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState<string | null>(null);
 
-  const sortedAgents = [...agents].sort((a, b) => {
+  // Filter agents based on user role
+  const filteredAgents = React.useMemo(() => {
+    // Admin and decision_maker can see all agents
+    if (user?.role === 'admin' || user?.role === 'decision_maker') {
+      return agents;
+    }
+    // Regular users can only see their own agents
+    return agents.filter(agent => agent.ownerEmail === user?.email);
+  }, [agents, user]);
+
+  const sortedAgents = [...filteredAgents].sort((a, b) => {
     const scoreA = typeof a.totalScore === 'number' ? a.totalScore : 0;
     const scoreB = typeof b.totalScore === 'number' ? b.totalScore : 0;
     return scoreB - scoreA;
@@ -173,7 +185,7 @@ export function AgentList({ agents, onResubmit, onEditDetails, onDelete }: Agent
           </div>
         ))}
 
-        {agents.length === 0 && (
+        {sortedAgents.length === 0 && (
           <p className="text-center text-gray-500 py-8">
             No AI agents added yet. Add your first agent using the form.
           </p>

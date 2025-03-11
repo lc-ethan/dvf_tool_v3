@@ -1,6 +1,6 @@
 import React from 'react';
 import { CheckCircle, XCircle, Clock, Star, Zap, Lightbulb, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import type { AIAgent, BusinessUnit, AssessmentQuestion } from '../types';
+import type { AIAgent, CustomerJourney, AssessmentQuestion } from '../types';
 
 interface CommercialReviewProps {
   agents: AIAgent[];
@@ -348,6 +348,13 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
     });
   };
 
+  const hasRejectedQuestions = (agentId: string): boolean => {
+    const approvals = questionApprovals[agentId];
+    if (!approvals) return false;
+
+    return Object.values(approvals).some(approval => approval.rejected);
+  };
+
   const getFailedQuestions = (agentId: string) => {
     const approvals = questionApprovals[agentId];
     if (!approvals) return [];
@@ -491,6 +498,7 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
 
   const renderAgentCard = (agent: AIAgent) => {
     const isExpanded = expandedAgents.has(agent.id);
+    const hasRejections = hasRejectedQuestions(agent.id);
 
     return (
       <div
@@ -571,17 +579,23 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
                   rows={3}
                 />
                 <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleStatusUpdate(agent, 'Approved')}
-                    disabled={!isAllQuestionsReviewed(agent.id)}
-                    className={`flex-1 px-4 py-2 rounded-md ${
-                      isAllQuestionsReviewed(agent.id)
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    Approve
-                  </button>
+                  {hasRejections ? (
+                    <div className="flex-1 px-4 py-2 bg-gray-100 text-gray-500 rounded-md cursor-not-allowed text-center">
+                      Cannot approve - has rejected criteria
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleStatusUpdate(agent, 'Approved')}
+                      disabled={!isAllQuestionsReviewed(agent.id)}
+                      className={`flex-1 px-4 py-2 rounded-md ${
+                        isAllQuestionsReviewed(agent.id)
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Approve
+                    </button>
+                  )}
                   <button
                     onClick={() => handleStatusUpdate(agent, 'Rejected')}
                     disabled={!isAllQuestionsReviewed(agent.id)}
@@ -594,6 +608,11 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
                     Reject
                   </button>
                 </div>
+                {hasRejections && (
+                  <p className="text-sm text-red-600 text-center">
+                    This agent has rejected criteria and must be rejected
+                  </p>
+                )}
               </div>
             )}
 
@@ -705,7 +724,7 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
                 disabled={!rejectionReason.trim()}
                 className={`px-4 py-2 rounded-md ${
                   rejectionReason.trim()
-                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    ? 'bg- red-600 text-white hover:bg-red-700'
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                 }`}
               >
