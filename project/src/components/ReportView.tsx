@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, TrendingUp, Star, Zap, Lightbulb } from 'lucide-react';
+import { BarChart2, Building2, Star, Zap, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import type { AIAgent, BusinessUnit } from '../types';
 import { AgentDetailsModal } from './AgentDetailsModal';
 
@@ -54,7 +54,7 @@ export function ReportView({ agents }: ReportViewProps) {
       case 'Desirability': return <Star className="w-5 h-5 text-yellow-500" />;
       case 'Viability': return <Zap className="w-5 h-5 text-blue-500" />;
       case 'Feasibility': return <Lightbulb className="w-5 h-5 text-green-500" />;
-      default: return <TrendingUp className="w-5 h-5 text-purple-500" />;
+      default: return <BarChart2 className="w-5 h-5 text-purple-500" />;
     }
   };
 
@@ -150,7 +150,7 @@ export function ReportView({ agents }: ReportViewProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RankingSection
             title="Overall Score"
-            icon={<TrendingUp className="w-5 h-5 text-purple-500" />}
+            icon={<BarChart2 className="w-5 h-5 text-purple-500" />}
             agents={sortedByTotal}
             scoreKey="totalScore"
           />

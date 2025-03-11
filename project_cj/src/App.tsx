@@ -11,7 +11,6 @@ function App() {
   const [agents, setAgents] = React.useState<AIAgent[]>([]);
   const [view, setView] = React.useState<'submit' | 'review' | 'activator' | 'journey'>('submit');
   const [resubmitAgent, setResubmitAgent] = React.useState<AIAgent | null>(null);
-  const [editAgent, setEditAgent] = React.useState<AIAgent | null>(null);
   const [nameError, setNameError] = React.useState<string | null>(null);
   const formRef = React.useRef<HTMLDivElement>(null);
 
@@ -23,8 +22,7 @@ function App() {
     // Check if name already exists (case insensitive)
     const nameExists = agents.some(
       agent => agent.name.toLowerCase() === formData.name.toLowerCase() && 
-      (!resubmitAgent || agent.id !== resubmitAgent.id) &&
-      (!editAgent || agent.id !== editAgent.id)
+      (!resubmitAgent || agent.id !== resubmitAgent.id)
     );
 
     if (nameExists) {
@@ -39,37 +37,15 @@ function App() {
       formData.feasibilityScores
     );
 
-    if (editAgent) {
-      // Update existing agent
-      setAgents(prev => prev.map(agent => 
-        agent.id === editAgent.id 
-          ? { ...agent, ...formData, totalScore }
-          : agent
-      ));
-      setEditAgent(null);
-    } else if (resubmitAgent) {
-      // Handle resubmission
-      const newAgent: AIAgent = {
-        ...formData,
-        id: resubmitAgent.id,
-        totalScore,
-        status: 'Pending',
-        reviewNotes: undefined,
-        reviewDate: undefined,
-        reviewResults: undefined
-      };
-      setAgents(prev => prev.map(a => (a.id === resubmitAgent.id ? newAgent : a)));
-      setResubmitAgent(null);
-    } else {
-      // Add new agent
-      const newAgent: AIAgent = {
-        ...formData,
-        id: crypto.randomUUID(),
-        totalScore,
-        status: 'Pending',
-      };
-      setAgents(prev => [...prev, newAgent]);
-    }
+    const newAgent: AIAgent = {
+      ...formData,
+      id: crypto.randomUUID(),
+      totalScore,
+      status: 'Pending',
+    };
+
+    setAgents((prev) => [...prev, newAgent]);
+    setResubmitAgent(null);
   };
 
   const handleUpdateStatus = (id: string, status: AIAgent['status'], notes: string, failedQuestions?: { category: string; questions: string[] }[]) => {
@@ -96,25 +72,33 @@ function App() {
 
   const handleResubmit = (agent: AIAgent) => {
     setResubmitAgent(agent);
-    setEditAgent(null);
     setView('submit');
+    scrollToTop();
   };
 
-  const handleEditDetails = (agent: AIAgent) => {
-    setEditAgent(agent);
+  const handleResubmitComplete = (formData: FormData) => {
+    if (!resubmitAgent) return;
+
+    const totalScore = calculateDVFScore(
+      formData.desirabilityScores,
+      formData.viabilityScores,
+      formData.feasibilityScores
+    );
+
+    // Create new agent with updated data but preserve the original ID and name
+    const updatedAgent: AIAgent = {
+      ...formData,
+      id: resubmitAgent.id,
+      name: resubmitAgent.name, // Preserve the original name
+      totalScore,
+      status: 'Pending',
+      reviewNotes: undefined,
+      reviewDate: undefined,
+      reviewResults: undefined
+    };
+
+    setAgents((prev) => prev.map((a) => (a.id === resubmitAgent.id ? updatedAgent : a)));
     setResubmitAgent(null);
-    setView('submit');
-  };
-
-  const handleDeleteAgent = (agent: AIAgent) => {
-    setAgents(prev => prev.filter(a => a.id !== agent.id));
-    // Reset edit state if the deleted agent was being edited
-    if (editAgent?.id === agent.id) {
-      setEditAgent(null);
-    }
-    if (resubmitAgent?.id === agent.id) {
-      setResubmitAgent(null);
-    }
   };
 
   return (
@@ -131,10 +115,7 @@ function App() {
             <button
               onClick={() => {
                 setView('submit');
-                if (view !== 'submit') {
-                  setResubmitAgent(null);
-                  setEditAgent(null);
-                }
+                if (view !== 'submit') setResubmitAgent(null);
               }}
               className={`px-3 py-2 text-sm md:px-4 md:py-2 md:text-base rounded-md ${
                 view === 'submit'
@@ -148,7 +129,6 @@ function App() {
               onClick={() => {
                 setView('review');
                 setResubmitAgent(null);
-                setEditAgent(null);
               }}
               className={`px-3 py-2 text-sm md:px-4 md:py-2 md:text-base rounded-md ${
                 view === 'review'
@@ -162,7 +142,6 @@ function App() {
               onClick={() => {
                 setView('activator');
                 setResubmitAgent(null);
-                setEditAgent(null);
               }}
               className={`px-3 py-2 text-sm md:px-4 md:py-2 md:text-base rounded-md ${
                 view === 'activator'
@@ -176,7 +155,6 @@ function App() {
               onClick={() => {
                 setView('journey');
                 setResubmitAgent(null);
-                setEditAgent(null);
               }}
               className={`px-3 py-2 text-sm md:px-4 md:py-2 md:text-base rounded-md ${
                 view === 'journey'
@@ -192,9 +170,9 @@ function App() {
         {view === 'submit' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8" ref={formRef}>
             <AgentForm 
-              onSubmit={handleAddAgent}
-              initialData={editAgent || resubmitAgent || undefined}
-              isEditing={!!editAgent || !!resubmitAgent}
+              onSubmit={resubmitAgent ? handleResubmitComplete : handleAddAgent}
+              initialData={resubmitAgent || undefined}
+              isEditing={!!resubmitAgent}
               nameError={nameError}
               onNameChange={() => setNameError(null)}
               onStepChange={scrollToTop}
@@ -203,8 +181,6 @@ function App() {
             <AgentList 
               agents={agents}
               onResubmit={handleResubmit}
-              onEditDetails={handleEditDetails}
-              onDelete={handleDeleteAgent}
             />
           </div>
         ) : view === 'review' ? (

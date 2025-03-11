@@ -8,7 +8,9 @@ import type {
   Platform,
   AgentType,
   AgentClassification,
-  AgentName
+  AgentName,
+  AgentID,
+  AIAgent
 } from '../types';
 import { DVFScoring } from './DVFScoring';
 import { calculateDesirabilityScore, calculateViabilityScore, calculateFeasibilityScore } from '../utils/calculateScore';
@@ -31,7 +33,11 @@ interface AgentFormProps {
   nameError?: string | null;
   onNameChange?: () => void;
   onStepChange?: () => void;
-  existingAgents: Array<{ agentId: string; name: AgentName; status: 'Pending' | 'Approved' | 'Rejected' }>;
+  existingAgents: Array<{ 
+    agentId: AgentID; 
+    name: AgentName; 
+    status: AIAgent['status'] 
+  }>;
 }
 
 const initialScores = {
@@ -144,7 +150,11 @@ function TypeSelectionStep({
     jobTitle?: string | null;
     agentId?: string | null;
   };
-  existingAgents: Array<{ agentId: string; name: AgentName; status: 'Pending' | 'Approved' | 'Rejected' }>;
+  existingAgents: Array<{ 
+    agentId: AgentID; 
+    name: AgentName; 
+    status: AIAgent['status'] 
+  }>;
 }) {
   const [useCustomJobTitle, setUseCustomJobTitle] = React.useState(false);
 

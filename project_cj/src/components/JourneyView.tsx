@@ -8,8 +8,8 @@ interface JourneyViewProps {
 }
 
 interface JourneyMap {
-  [key in CustomerJourney]?: {
-    [key in AgentType]?: AIAgent[];
+  [key: string]: {
+    [key: string]: AIAgent[];
   };
 }
 
