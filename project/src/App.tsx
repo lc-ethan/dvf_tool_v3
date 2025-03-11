@@ -3,13 +3,12 @@ import { AgentForm } from './components/AgentForm';
 import { AgentList } from './components/AgentList';
 import { CommercialReview } from './components/CommercialReview';
 import { ReportView } from './components/ReportView';
-import { JourneyView } from './components/JourneyView';
 import { calculateDVFScore } from './utils/calculateScore';
 import type { AIAgent, FormData } from './types';
 
 function App() {
   const [agents, setAgents] = React.useState<AIAgent[]>([]);
-  const [view, setView] = React.useState<'submit' | 'review' | 'activator' | 'journey'>('submit');
+  const [view, setView] = React.useState<'submit' | 'review' | 'activator'>('submit');
   const [resubmitAgent, setResubmitAgent] = React.useState<AIAgent | null>(null);
   const [editAgent, setEditAgent] = React.useState<AIAgent | null>(null);
   const [nameError, setNameError] = React.useState<string | null>(null);
@@ -172,20 +171,6 @@ function App() {
             >
               Activator Based View
             </button>
-            <button
-              onClick={() => {
-                setView('journey');
-                setResubmitAgent(null);
-                setEditAgent(null);
-              }}
-              className={`px-3 py-2 text-sm md:px-4 md:py-2 md:text-base rounded-md ${
-                view === 'journey'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Journey Based View
-            </button>
           </div>
         </header>
 
@@ -212,10 +197,8 @@ function App() {
             agents={agents}
             onUpdateStatus={handleUpdateStatus}
           />
-        ) : view === 'activator' ? (
-          <ReportView agents={agents} />
         ) : (
-          <JourneyView agents={agents} />
+          <ReportView agents={agents} />
         )}
       </div>
     </div>

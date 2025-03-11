@@ -58,12 +58,12 @@ const initialScores = {
     foundationalScore: 1
   },
   feasibilityScores: {
-    ootbScore: 2,
-    customScore: 2,
-    integrationScore: 2,
-    dependenciesScore: 2,
-    multiActionScore: 2,
-    externalDataScore: 2
+    ootbScore: 0,
+    customScore: 1,
+    integrationScore: 1,
+    dependenciesScore: 1,
+    multiActionScore: 1,
+    externalDataScore: 1
   }
 };
 
@@ -621,6 +621,7 @@ export default function AgentForm({
         ...prev,
         jobTitle: '',
         owner: '',
+        ownerEmail: '',
         description: '',
         ...initialScores
       }));

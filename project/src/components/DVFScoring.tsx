@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertCircle } from 'lucide-react';
 import type { DesirabilityScores, ViabilityScores, FeasibilityScores } from '../types';
 
 interface DVFScoringProps {
@@ -39,18 +40,23 @@ export function DVFScoring({
     value, 
     label, 
     checked, 
-    onChange 
+    onChange,
+    disabled = false
   }: { 
     value: number; 
     label: string; 
     checked: boolean; 
     onChange: (value: number) => void;
+    disabled?: boolean;
   }) => (
-    <label className="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-gray-50">
+    <label className={`flex items-center space-x-2 p-2 rounded ${
+      disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'
+    }`}>
       <input
         type="radio"
         checked={checked}
-        onChange={() => onChange(value)}
+        onChange={() => !disabled && onChange(value)}
+        disabled={disabled}
         className="form-radio text-blue-600"
       />
       <span className="text-sm text-gray-700">{label}</span>
@@ -64,6 +70,8 @@ export function DVFScoring({
     selectedValue,
     onChange,
     showGlossaryButton,
+    warning,
+    disabled = false
   }: {
     title: string;
     description: string;
@@ -71,6 +79,8 @@ export function DVFScoring({
     selectedValue: number;
     onChange: (value: number) => void;
     showGlossaryButton?: boolean;
+    warning?: string;
+    disabled?: boolean;
   }) => (
     <div className="border-b pb-6 mb-6 last:border-b-0">
       <div className="mb-2">
@@ -89,6 +99,13 @@ export function DVFScoring({
       </div>
       <p className="text-sm text-gray-600 mb-4">{description}</p>
       
+      {warning && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-start gap-2">
+          <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-yellow-700">{warning}</p>
+        </div>
+      )}
+      
       {showGlossaryButton && showRiskGlossary && (
         <div className="mb-6 bg-blue-50 p-4 rounded-lg">
           <h5 className="font-medium text-blue-900 mb-3">Top 10 Business Risks</h5>
@@ -103,7 +120,7 @@ export function DVFScoring({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {options.map((option) => (
           <ScoreOption
             key={option.value}
@@ -111,6 +128,7 @@ export function DVFScoring({
             label={option.label}
             checked={selectedValue === option.value}
             onChange={onChange}
+            disabled={disabled}
           />
         ))}
       </div>
@@ -307,95 +325,101 @@ export function DVFScoring({
     </div>
   );
 
-  const renderFeasibilitySection = () => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-900">Feasibility Assessment</h3>
-        <span className="text-sm font-medium px-3 py-1 bg-purple-100 text-purple-800 rounded-full">
-          8 points max
-        </span>
+  const renderFeasibilitySection = () => {
+    const hasConflictingAnswers = feasibilityScores.ootbScore === feasibilityScores.customScore;
+    
+    const handleOotbChange = (value: number) => {
+      onScoreChange('feasibility', 'ootbScore', value);
+      // Automatically set the opposite value for customScore
+      onScoreChange('feasibility', 'customScore', value === 1 ? 0 : 1);
+    };
+
+    const handleCustomChange = (value: number) => {
+      onScoreChange('feasibility', 'customScore', value);
+      // Automatically set the opposite value for ootbScore
+      onScoreChange('feasibility', 'ootbScore', value === 1 ? 0 : 1);
+    };
+
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-900">Feasibility Assessment</h3>
+          <span className="text-sm font-medium px-3 py-1 bg-purple-100 text-purple-800 rounded-full">
+            15 points max
+          </span>
+        </div>
+        <div className="space-y-6">
+          <ScoreSection
+            title="Out of the box use cases (no customisation)"
+            description="Can this be implemented using out-of-the-box features without customization?"
+            options={[
+              { value: 0, label: "No" },
+              { value: 1, label: "Yes" }
+            ]}
+            selectedValue={feasibilityScores.ootbScore}
+            onChange={handleOotbChange}
+            warning={hasConflictingAnswers ? "This answer must be opposite to the customization question below" : undefined}
+          />
+
+          <ScoreSection
+            title="Custom Use cases and out of the box use cases with some customisation required"
+            description="Does this require custom development or modifications to out-of-the-box features?"
+            options={[
+              { value: 0, label: "No" },
+              { value: 1, label: "Yes" }
+            ]}
+            selectedValue={feasibilityScores.customScore}
+            onChange={handleCustomChange}
+            warning={hasConflictingAnswers ? "This answer must be opposite to the out-of-the-box question above" : undefined}
+          />
+
+          <ScoreSection
+            title="This agent completes multiple actions"
+            description="Does this agent need to handle multiple actions?"
+            options={[
+              { value: 0, label: "No" },
+              { value: 1, label: "Yes" }
+            ]}
+            selectedValue={feasibilityScores.multiActionScore}
+            onChange={(value) => onScoreChange('feasibility', 'multiActionScore', value)}
+          />
+
+          <ScoreSection
+            title="Dependencies (other programs, data migration, downstream etc)"
+            description="Are there external dependencies required?"
+            options={[
+              { value: 0, label: "No" },
+              { value: 1, label: "Yes" }
+            ]}
+            selectedValue={feasibilityScores.dependenciesScore}
+            onChange={(value) => onScoreChange('feasibility', 'dependenciesScore', value)}
+          />
+
+          <ScoreSection
+            title="Integration that relies on technology that has not been implemented"
+            description="Does this require integration with unimplemented technology?"
+            options={[
+              { value: 0, label: "No" },
+              { value: 1, label: "Yes" }
+            ]}
+            selectedValue={feasibilityScores.integrationScore}
+            onChange={(value) => onScoreChange('feasibility', 'integrationScore', value)}
+          />
+
+          <ScoreSection
+            title="Relies on data that does not exist in the target platform today"
+            description="Does this require data that doesn't currently exist in the target platform?"
+            options={[
+              { value: 0, label: "No" },
+              { value: 1, label: "Yes" }
+            ]}
+            selectedValue={feasibilityScores.externalDataScore}
+            onChange={(value) => onScoreChange('feasibility', 'externalDataScore', value)}
+          />
+        </div>
       </div>
-      <div className="space-y-6">
-        <ScoreSection
-          title="Out of the Box Capability"
-          description="How much of the solution can be implemented using out-of-the-box features?"
-          options={[
-            { value: 2, label: "Highly Custom" },
-            { value: 4, label: "Mostly Custom" },
-            { value: 6, label: "Mixed" },
-            { value: 8, label: "Mostly OOTB" }
-          ]}
-          selectedValue={feasibilityScores.ootbScore}
-          onChange={(value) => onScoreChange('feasibility', 'ootbScore', value)}
-        />
-
-        <ScoreSection
-          title="Customization Complexity"
-          description="How complex are the required customizations?"
-          options={[
-            { value: 2, label: "Very Complex" },
-            { value: 4, label: "Moderately Complex" },
-            { value: 6, label: "Simple" },
-            { value: 8, label: "Minimal" }
-          ]}
-          selectedValue={feasibilityScores.customScore}
-          onChange={(value) => onScoreChange('feasibility', 'customScore', value)}
-        />
-
-        <ScoreSection
-          title="Integration Requirements"
-          description="How complex are the integration requirements?"
-          options={[
-            { value: 2, label: "Multiple Complex" },
-            { value: 4, label: "Few Complex" },
-            { value: 6, label: "Simple" },
-            { value: 8, label: "Minimal/None" }
-          ]}
-          selectedValue={feasibilityScores.integrationScore}
-          onChange={(value) => onScoreChange('feasibility', 'integrationScore', value)}
-        />
-
-        <ScoreSection
-          title="External Dependencies"
-          description="Level of external dependencies required"
-          options={[
-            { value: 2, label: "Heavy" },
-            { value: 4, label: "Moderate" },
-            { value: 6, label: "Light" },
-            { value: 8, label: "Minimal" }
-          ]}
-          selectedValue={feasibilityScores.dependenciesScore}
-          onChange={(value) => onScoreChange('feasibility', 'dependenciesScore', value)}
-        />
-
-        <ScoreSection
-          title="Multi-Action Complexity"
-          description="Complexity of multiple action handling"
-          options={[
-            { value: 2, label: "Very Complex" },
-            { value: 4, label: "Moderate" },
-            { value: 6, label: "Simple" },
-            { value: 8, label: "Single Action" }
-          ]}
-          selectedValue={feasibilityScores.multiActionScore}
-          onChange={(value) => onScoreChange('feasibility', 'multiActionScore', value)}
-        />
-
-        <ScoreSection
-          title="External Data Requirements"
-          description="Complexity of external data requirements"
-          options={[
-            { value: 2, label: "Complex External" },
-            { value: 4, label: "Moderate External" },
-            { value: 6, label: "Simple External" },
-            { value: 8, label: "Internal Only" }
-          ]}
-          selectedValue={feasibilityScores.externalDataScore}
-          onChange={(value) => onScoreChange('feasibility', 'externalDataScore', value)}
-        />
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-8">

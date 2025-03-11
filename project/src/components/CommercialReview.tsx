@@ -9,6 +9,7 @@ interface CommercialReviewProps {
 
 interface QuestionApproval {
   approved: boolean;
+  rejected?: boolean;
   notes?: string;
 }
 
@@ -254,9 +255,14 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
   const [selectedUnit, setSelectedUnit] = React.useState<BusinessUnit | 'All'>('All');
   const [selectedStatus, setSelectedStatus] = React.useState<AIAgent['status']>('Pending');
   const [reviewNotes, setReviewNotes] = React.useState<Record<string, string>>({});
-  const [rejectReasonModalOpen, setRejectReasonModalOpen] = React.useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = React.useState('');
   const [questionApprovals, setQuestionApprovals] = React.useState<Record<string, AssessmentApprovals>>({});
+  const [expandedAgents, setExpandedAgents] = React.useState<Set<string>>(new Set());
+  const [rejectReasonModalOpen, setRejectReasonModalOpen] = React.useState<{
+    agentId: string;
+    category: string;
+    questionKey: string;
+  } | null>(null);
+  const [rejectionReason, setRejectionReason] = React.useState('');
 
   const businessUnits: (BusinessUnit | 'All')[] = ['All', 'Enterprise', 'T1', 'Shared Services', 'Networks & IT'];
   const statusOptions: AIAgent['status'][] = ['Pending', 'Approved', 'Rejected'];
@@ -267,6 +273,18 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
       agent.status === selectedStatus
     )
   );
+
+  const toggleExpand = (agentId: string) => {
+    setExpandedAgents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(agentId)) {
+        newSet.delete(agentId);
+      } else {
+        newSet.add(agentId);
+      }
+      return newSet;
+    });
+  };
 
   const getStatusBadge = (status: AIAgent['status']) => {
     switch (status) {
@@ -284,17 +302,37 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
     return option ? option.label : 'N/A';
   };
 
-  const handleQuestionApproval = (agentId: string, category: string, questionKey: string, approved: boolean, notes?: string) => {
+  const handleQuestionApproval = (agentId: string, category: string, questionKey: string, approved: boolean) => {
     setQuestionApprovals(prev => ({
       ...prev,
       [agentId]: {
         ...prev[agentId],
-        [category + '_' + questionKey]: { approved, notes }
+        [category + '_' + questionKey]: { approved, rejected: false }
       }
     }));
   };
 
-  const isAllQuestionsApproved = (agentId: string): boolean => {
+  const handleQuestionRejection = (agentId: string, category: string, questionKey: string) => {
+    setRejectionReason('');
+    setRejectReasonModalOpen({ agentId, category, questionKey });
+  };
+
+  const submitRejectionReason = () => {
+    if (!rejectReasonModalOpen || !rejectionReason.trim()) return;
+
+    const { agentId, category, questionKey } = rejectReasonModalOpen;
+    setQuestionApprovals(prev => ({
+      ...prev,
+      [agentId]: {
+        ...prev[agentId],
+        [category + '_' + questionKey]: { approved: false, rejected: true, notes: rejectionReason.trim() }
+      }
+    }));
+    setRejectReasonModalOpen(null);
+    setRejectionReason('');
+  };
+
+  const isAllQuestionsReviewed = (agentId: string): boolean => {
     const approvals = questionApprovals[agentId];
     if (!approvals) return false;
 
@@ -304,7 +342,10 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
       ...feasibilityQuestions.map(q => 'feasibility_' + q.key)
     ];
 
-    return allQuestions.every(key => approvals[key]?.approved);
+    return allQuestions.every(key => {
+      const approval = approvals[key];
+      return approval?.approved || approval?.rejected;
+    });
   };
 
   const getFailedQuestions = (agentId: string) => {
@@ -319,11 +360,17 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
                        feasibilityQuestions;
 
       const failedInCategory = questions
-        .filter(q => !approvals[category + '_' + q.key]?.approved)
-        .map(q => q.label);
+        .filter(q => approvals[category + '_' + q.key]?.rejected)
+        .map(q => ({
+          question: q.label,
+          reason: approvals[category + '_' + q.key]?.notes || 'No reason provided'
+        }));
 
       if (failedInCategory.length > 0) {
-        failed.push({ category, questions: failedInCategory });
+        failed.push({
+          category,
+          questions: failedInCategory.map(f => `${f.question} - ${f.reason}`)
+        });
       }
     });
 
@@ -367,16 +414,52 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
           
           {agent.status === 'Pending' && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleQuestionApproval(agent.id, category, question.key, !approval?.approved)}
-                className={`px-3 py-1 rounded-md text-sm ${
-                  approval?.approved
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
-              >
-                {approval?.approved ? 'Approved' : 'Approve'}
-              </button>
+              {approval?.rejected ? (
+                <div className="flex items-center gap-2">
+                  <div className="text-sm text-red-600 italic">
+                    Rejected: {approval.notes}
+                  </div>
+                  <button
+                    onClick={() => handleQuestionApproval(agent.id, category, question.key, true)}
+                    className="px-3 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-md text-sm"
+                  >
+                    Change to Approve
+                  </button>
+                  <button
+                    onClick={() => handleQuestionRejection(agent.id, category, question.key)}
+                    className="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-md text-sm"
+                  >
+                    Edit Reason
+                  </button>
+                </div>
+              ) : approval?.approved ? (
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-sm">
+                    Approved
+                  </span>
+                  <button
+                    onClick={() => handleQuestionRejection(agent.id, category, question.key)}
+                    className="px-3 py-1 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-md text-sm"
+                  >
+                    Change to Reject
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleQuestionApproval(agent.id, category, question.key, true)}
+                    className="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-md text-sm"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleQuestionRejection(agent.id, category, question.key)}
+                    className="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-md text-sm"
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -406,10 +489,151 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
     </div>
   );
 
+  const renderAgentCard = (agent: AIAgent) => {
+    const isExpanded = expandedAgents.has(agent.id);
+
+    return (
+      <div
+        key={agent.id}
+        className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+      >
+        <button
+          onClick={() => toggleExpand(agent.id)}
+          className="w-full p-6 text-left bg-white hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-xl font-semibold flex items-center gap-2">
+                {agent.agentId}
+                {isExpanded ? (
+                  <ChevronUp className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-400" />
+                )}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">Agent Name: {agent.name}</p>
+              <p className="text-sm text-gray-600">{agent.businessUnit}</p>
+              <p className="text-gray-600 mt-2">{agent.description}</p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600 mb-2">
+                {agent.totalScore?.toFixed(1)}
+              </div>
+              <p className="text-sm text-gray-500 mb-2">Total Score</p>
+              <div className="flex items-center justify-end">
+                {agent.status === 'Rejected' && agent.reviewResults?.failedQuestions && (
+                  <div className="mr-2 text-red-600">
+                    <AlertCircle className="w-4 h-4" />
+                  </div>
+                )}
+                {getStatusBadge(agent.status)}
+              </div>
+            </div>
+          </div>
+        </button>
+
+        {isExpanded && (
+          <div className="border-t px-6 py-4 bg-gray-50">
+            {renderAssessmentSection(
+              agent,
+              'Desirability Assessment',
+              <Star className="w-5 h-5 text-yellow-500" />,
+              desirabilityQuestions,
+              agent.desirabilityScores,
+              'desirability'
+            )}
+
+            {renderAssessmentSection(
+              agent,
+              'Viability Assessment',
+              <Zap className="w-5 h-5 text-blue-500" />,
+              viabilityQuestions,
+              agent.viabilityScores,
+              'viability'
+            )}
+
+            {renderAssessmentSection(
+              agent,
+              'Feasibility Assessment',
+              <Lightbulb className="w-5 h-5 text-green-500" />,
+              feasibilityQuestions,
+              agent.feasibilityScores,
+              'feasibility'
+            )}
+
+            {agent.status === 'Pending' && (
+              <div className="space-y-4 mt-6 border-t pt-6">
+                <textarea
+                  placeholder="Add review notes..."
+                  value={reviewNotes[agent.id] || ''}
+                  onChange={(e) => setReviewNotes(prev => ({ ...prev, [agent.id]: e.target.value }))}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  rows={3}
+                />
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => handleStatusUpdate(agent, 'Approved')}
+                    disabled={!isAllQuestionsReviewed(agent.id)}
+                    className={`flex-1 px-4 py-2 rounded-md ${
+                      isAllQuestionsReviewed(agent.id)
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleStatusUpdate(agent, 'Rejected')}
+                    disabled={!isAllQuestionsReviewed(agent.id)}
+                    className={`flex-1 px-4 py-2 rounded-md ${
+                      isAllQuestionsReviewed(agent.id)
+                        ? 'bg-red-600 text-white hover:bg-red-700'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {agent.status !== 'Pending' && agent.reviewNotes && (
+              <div className="mt-6 border-t pt-6">
+                <h4 className="font-semibold text-gray-900 mb-2">Review Notes:</h4>
+                <p className="text-gray-600">{agent.reviewNotes}</p>
+                {agent.reviewDate && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    Reviewed on: {new Date(agent.reviewDate).toLocaleDateString()}
+                  </p>
+                )}
+                
+                {agent.status === 'Rejected' && agent.reviewResults?.failedQuestions && (
+                  <div className="mt-4 p-4 bg-red-50 rounded-lg">
+                    <h5 className="font-medium text-red-800 mb-2">Failed Assessment Areas:</h5>
+                    {agent.reviewResults.failedQuestions.map((category, idx) => (
+                      <div key={idx} className="mb-2 last:mb-0">
+                        <p className="font-medium text-red-700">{category.category}:</p>
+                        <ul className="list-disc list-inside text-red-600">
+                          {category.questions.map((q, i) => (
+                            <li key={i} className="text-sm">{q}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Commercial Team Review</h2>
+        <h2 className="text-2xl font-bold">Business Review</h2>
         <div className="flex gap-4">
           <select
             value={selectedStatus}
@@ -434,123 +658,9 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
         </div>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-4">
         {filteredAgents.length > 0 ? (
-          filteredAgents.map((agent) => (
-            <div
-              key={agent.id}
-              className="border rounded-lg p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="text-xl font-semibold">{agent.agentId}</h3>
-                  <p className="text-sm text-gray-500 mt-1">Agent Name: {agent.name}</p>
-                  <p className="text-sm text-gray-600">{agent.businessUnit}</p>
-                  <p className="text-gray-600 mt-2">{agent.description}</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-blue-600 mb-2">
-                    {agent.totalScore?.toFixed(1)}
-                  </div>
-                  <p className="text-sm text-gray-500 mb-2">Total Score</p>
-                  <div className="flex items-center justify-end">
-                    {agent.status === 'Rejected' && agent.reviewResults?.failedQuestions && (
-                      <div className="mr-2 text-red-600">
-                        <AlertCircle className="w-4 h-4" />
-                      </div>
-                    )}
-                    {getStatusBadge(agent.status)}
-                  </div>
-                </div>
-              </div>
-
-              {renderAssessmentSection(
-                agent,
-                'Desirability Assessment',
-                <Star className="w-5 h-5 text-yellow-500" />,
-                desirabilityQuestions,
-                agent.desirabilityScores,
-                'desirability'
-              )}
-
-              {renderAssessmentSection(
-                agent,
-                'Viability Assessment',
-                <Zap className="w-5 h-5 text-blue-500" />,
-                viabilityQuestions,
-                agent.viabilityScores,
-                'viability'
-              )}
-
-              {renderAssessmentSection(
-                agent,
-                'Feasibility Assessment',
-                <Lightbulb className="w-5 h-5 text-green-500" />,
-                feasibilityQuestions,
-                agent.feasibilityScores,
-                'feasibility'
-              )}
-
-              {agent.status === 'Pending' && (
-                <div className="space-y-4 mt-6 border-t pt-6">
-                  <textarea
-                    placeholder="Add review notes..."
-                    value={reviewNotes[agent.id] || ''}
-                    onChange={(e) => setReviewNotes(prev => ({ ...prev, [agent.id]: e.target.value }))}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    rows={3}
-                  />
-                  <div className="flex space-x-4">
-                    <button
-                      onClick={() => handleStatusUpdate(agent, 'Approved')}
-                      disabled={!isAllQuestionsApproved(agent.id)}
-                      className={`flex-1 px-4 py-2 rounded-md ${
-                        isAllQuestionsApproved(agent.id)
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(agent, 'Rejected')}
-                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {agent.status !== 'Pending' && agent.reviewNotes && (
-                <div className="mt-6 border-t pt-6">
-                  <h4 className="font-semibold text-gray-900 mb-2">Review Notes:</h4>
-                  <p className="text-gray-600">{agent.reviewNotes}</p>
-                  {agent.reviewDate && (
-                    <p className="text-sm text-gray-500 mt-2">
-                      Reviewed on: {new Date(agent.reviewDate).toLocaleDateString()}
-                    </p>
-                  )}
-                  
-                  {agent.status === 'Rejected' && agent.reviewResults?.failedQuestions && (
-                    <div className="mt-4 p-4 bg-red-50 rounded-lg">
-                      <h5 className="font-medium text-red-800 mb-2">Failed Assessment Areas:</h5>
-                      {agent.reviewResults.failedQuestions.map((category, idx) => (
-                        <div key={idx} className="mb-2 last:mb-0">
-                          <p className="font-medium text-red-700">{category.category}:</p>
-                          <ul className="list-disc list-inside text-red-600">
-                            {category.questions.map((q, i) => (
-                              <li key={i} className="text-sm">{q}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))
+          filteredAgents.map(renderAgentCard)
         ) : (
           <div className="text-center py-12 bg-gray-50 rounded-lg">
             {selectedStatus === 'Pending' ? (
@@ -571,6 +681,40 @@ export function CommercialReview({ agents, onUpdateStatus }: CommercialReviewPro
           </div>
         )}
       </div>
+
+      {rejectReasonModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Provide Rejection Reason</h3>
+            <textarea
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 mb-4"
+              rows={3}
+              placeholder="Enter the reason for rejection..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setRejectReasonModalOpen(null)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitRejectionReason}
+                disabled={!rejectionReason.trim()}
+                className={`px-4 py-2 rounded-md ${
+                  rejectionReason.trim()
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
